@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balloon Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: skyblue;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+        #replay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            background: red;
+            color: white;
+            font-size: 20px;
+            border: none;
+            cursor: pointer;
+        }
+        #jumpscare {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="replay">Replay</button>
+    <div id="jumpscare">
+        <img src="jumpscare.gif" alt="Jumpscare" style="width:100%; height:100%;">
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const replayButton = document.getElementById('replay');
+        const scoreDisplay = document.getElementById('score');
+        const jumpscareDiv = document.getElementById('jumpscare');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let balloon = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 20,
+            color: 'red',
+            velocityY: 0
+        };
+
+        let gravity = 0.5;
+        let lift = -10;
+        let obstacles = [];
+        let score = 0;
+        let gameRunning = true;
+
+        function drawBalloon() {
+            ctx.beginPath();
+            ctx.arc(balloon.x, balloon.y, balloon.radius, 0, Math.PI * 2);
+            ctx.fillStyle = balloon.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function createObstacle() {
+            let gap = 150;
+            let topHeight = Math.random() * (canvas.height / 2);
+            let bottomHeight = canvas.height - topHeight - gap;
+
+            obstacles.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomHeight: bottomHeight,
+                width: 30,
+                passed: false
+            });
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = 'green';
+
+                // Top obstacle
+                ctx.fillRect(obstacle.x, 0, obstacle.width, obstacle.topHeight);
+
+                // Bottom obstacle
+                ctx.fillRect(obstacle.x, canvas.height - obstacle.bottomHeight, obstacle.width, obstacle.bottomHeight);
+            });
+        }
+
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.x -= 2; // Slow down obstacle movement
+
+                // Collision detection
+                if (
+                    balloon.x + balloon.radius > obstacle.x &&
+                    balloon.x - balloon.radius < obstacle.x + obstacle.width &&
+                    (balloon.y - balloon.radius < obstacle.topHeight ||
+                        balloon.y + balloon.radius > canvas.height - obstacle.bottomHeight)
+                ) {
+                    endGame();
+                }
+
+                // Update score
+                if (obstacle.x + obstacle.width < balloon.x && !obstacle.passed) {
+                    score++;
+                    obstacle.passed = true;
+                    scoreDisplay.innerText = `Score: ${score}`;
+                }
+            });
+
+            // Remove off-screen obstacles
+            obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            replayButton.style.display = 'block';
+            jumpscareDiv.style.display = 'block';
+            setTimeout(() => {
+                jumpscareDiv.style.display = 'none';
+            }, 2000);
+        }
+
+        function resetGame() {
+            balloon.y = canvas.height / 2;
+            balloon.velocityY = 0;
+            obstacles = [];
+            score = 0;
+            scoreDisplay.innerText = 'Score: 0';
+            replayButton.style.display = 'none';
+            gameRunning = true;
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!gameRunning) {
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBalloon();
+            drawObstacles();
+
+            balloon.velocityY += gravity;
+            balloon.y += balloon.velocityY;
+
+            if (balloon.y + balloon.radius > canvas.height || balloon.y - balloon.radius < 0) {
+                endGame();
+            }
+
+            updateObstacles();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', () => {
+            balloon.velocityY = lift;
+        });
+
+        replayButton.addEventListener('click', resetGame);
+
+        setInterval(createObstacle, 3000); // Slightly slower obstacle creation
+        gameLoop();
+    </script>
+</body>
+</html>
